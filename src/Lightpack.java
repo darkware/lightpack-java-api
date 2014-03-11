@@ -10,30 +10,25 @@ import java.util.Locale;
 public class Lightpack {
 
     private final Socket socket;
-    private final int[] ledMap;
     private boolean haveLock;
 
     /**
      * Initializes the connection to the Lightpack
+     *
      * @param host Hostname (e.g. 127.0.0.1)
      * @param port Port (default: 3636)
-     * @param ledMap Array of the LED Mapping
-     * @throws IOException
+     * @throws java.io.IOException
      */
-    public Lightpack(String host, int port, int[] ledMap) throws IOException {
+    public Lightpack(String host, int port) throws IOException {
         socket = new Socket(host, port);
         this.haveLock = false;
-        // Defensively copy the led map so that we have an immutable object
-        this.ledMap = new int[ledMap.length];
-        for (int i = 0, max = ledMap.length; i < max; i++) {
-            this.ledMap[i] = ledMap[i];
-        }
     }
 
     /**
      * Returns the Saved profiles on the Lightpack
+     *
      * @return Array of available Profiles
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String[] getProfiles() throws IOException {
         String command = "getprofiles\n";
@@ -43,8 +38,9 @@ public class Lightpack {
 
     /**
      * Returns the currently active Profile
+     *
      * @return Name of the currently active Profile
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String getProfile() throws IOException {
         String command = "getprofile\n";
@@ -54,8 +50,9 @@ public class Lightpack {
 
     /**
      * Returns the Lightpack Status
+     *
      * @return Status of the Lightpack
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String getStatus() throws IOException {
         String command = "getstatus\n";
@@ -65,8 +62,9 @@ public class Lightpack {
 
     /**
      * Returns the LED Count
+     *
      * @return LED Count
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public int getCountLeds() throws IOException {
         String command = "getcountleds\n";
@@ -76,8 +74,9 @@ public class Lightpack {
 
     /**
      * Returns the API Status
+     *
      * @return API Status
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String getApiStatus() throws IOException {
         String command = "getstatusapi\n";
@@ -88,9 +87,9 @@ public class Lightpack {
 
     /**
      * @param ledNumber number of the LED for which the color will be changed
-     * @param red value between [0 - 255] inclusive
-     * @param green value between [0 - 255] inclusive
-     * @param blue value between [0 - 255] inclusive
+     * @param red       value between [0 - 255] inclusive
+     * @param green     value between [0 - 255] inclusive
+     * @param blue      value between [0 - 255] inclusive
      */
     public String setColor(int ledNumber, int red, int green, int blue) throws IOException {
         String command = String.format(Locale.US, "setcolor:%d-%d,%d,%d;\n", ledNumber, red, green, blue);
@@ -98,14 +97,14 @@ public class Lightpack {
     }
 
     /**
-     * @param red value between [0 - 255] inclusive
+     * @param red   value between [0 - 255] inclusive
      * @param green value between [0 - 255] inclusive
-     * @param blue value between [0 - 255] inclusive
+     * @param blue  value between [0 - 255] inclusive
      */
     public String setColorForAll(int red, int green, int blue) throws IOException {
         StringBuilder command = new StringBuilder("setcolor:");
-        for (int led : ledMap) {
-            command.append(String.format(Locale.US, "%d-%d,%d,%d;", led, red, green, blue));
+        for (int i = 0; i < 10; i++) {
+            command.append(String.format(Locale.US, "%d-%d,%d,%d;", i, red, green, blue));
         }
         command.append('\n');
         return sendAndReceive(command.toString());
@@ -139,9 +138,10 @@ public class Lightpack {
 
     /**
      * Changes Lightpack Profile
+     *
      * @param profile
      * @return
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String setProfile(String profile) throws IOException {
         String command = String.format(Locale.US, "setprofile:%s\n", profile);
@@ -150,8 +150,9 @@ public class Lightpack {
 
     /**
      * Turns on the Lightpack
+     *
      * @return Response from the Lightpack
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String turnOn() throws IOException {
         return sendAndReceive("setstatus:on\n");
@@ -159,8 +160,9 @@ public class Lightpack {
 
     /**
      * Turns off the Lightpack
+     *
      * @return Response from Lightpack
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public String turnOff() throws IOException {
         return sendAndReceive("setstatus:off\n");
@@ -183,20 +185,21 @@ public class Lightpack {
         // get the response
         InputStreamReader reader = new InputStreamReader(socket.getInputStream());
         CharBuffer buf = CharBuffer.allocate(8192);
-        reader.read(buf.array(),0,8192);
+        reader.read(buf.array(), 0, 8192);
         return buf.toString();
     }
 
     /**
      * Resolves an API Lock (Needed for color changes etc)
+     *
      * @return Whether the API Lock could have been established
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public boolean lock() throws IOException {
         String command = "lock\n";
         String response = sendAndReceive(command);
         boolean isLocked = response.contains("lock:success");
-        if(isLocked){
+        if (isLocked) {
             haveLock = true;
         } else {
             haveLock = false;
@@ -206,14 +209,15 @@ public class Lightpack {
 
     /**
      * Releases the API Lock
+     *
      * @return Whether the API Lock has been successfully removed (or wasn't locked in the first place)
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public boolean unlock() throws IOException {
         String command = "unlock\n";
         String response = sendAndReceive(command);
         boolean unlocked = response.contains("unlock:success") || response.contains("unlock:not locked");
-        if(unlocked){
+        if (unlocked) {
             haveLock = false;
         } else {
             haveLock = true;
@@ -244,13 +248,13 @@ public class Lightpack {
 
         Lightpack lightpack = (Lightpack) o;
 
-        return Arrays.equals(ledMap, lightpack.ledMap) && socket.equals(lightpack.socket);
+        return socket.equals(lightpack.socket);
     }
 
     @Override
     public int hashCode() {
         int result = socket.hashCode();
-        result = 31 * result + Arrays.hashCode(ledMap);
+        result = 31 * result;
         return result;
     }
 
@@ -258,7 +262,6 @@ public class Lightpack {
     public String toString() {
         return "Lightpack{" +
                 "socket=" + socket +
-                ", ledMap=" + Arrays.toString(ledMap) +
                 '}';
     }
 }
